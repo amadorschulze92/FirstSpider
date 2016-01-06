@@ -1,0 +1,108 @@
+from scrapy import Selector
+from scrapy.selector import HtmlXPathSelector
+from scrapy.spiders import CrawlSpider, Rule
+from scrapy.http import Request
+from scraper_app.items import TripAdvisorInfo
+
+class LivingSocialSpider(CrawlSpider):
+    name = "tripadvisor"
+    allowed_domains = ["tripadvisor.com"]
+    start_urls = ["http://www.tripadvisor.com/Hotels-g30196-Austin_Texas-Hotels.html",
+        "http://www.tripadvisor.com/Hotels-g30196-oa30-Austin_Texas-Hotels.html#ACCOM_OVERVIEW",
+        "http://www.tripadvisor.com/Hotels-g30196-oa60-Austin_Texas-Hotels.html#ACCOM_OVERVIEW",
+        "http://www.tripadvisor.com/Hotels-g30196-oa90-Austin_Texas-Hotels.html#ACCOM_OVERVIEW",
+        "http://www.tripadvisor.com/Hotels-g30196-oa120-Austin_Texas-Hotels.html#ACCOM_OVERVIEW",
+        "http://www.tripadvisor.com/Hotels-g30196-oa150-Austin_Texas-Hotels.html#ACCOM_OVERVIEW",
+        "http://www.tripadvisor.com/Hotels-g30196-oa180-Austin_Texas-Hotels.html#ACCOM_OVERVIEW"
+    ]
+    
+    url_set = set([])
+    
+    def parse(self, response):
+        selector = Selector(response)
+        
+        try:
+            aka = response.xpath('//dl[@class="additional_info"]').extract()
+        except:
+            aka = ''
+        
+        try:
+            rooms = response.xpath('//span[@class="tabs_num_rooms"]/text()').extract()
+        except:
+            rooms = ''
+
+        try:
+            amenities = response.xpath('//div[@class="amenity_lst"]/ul').extract()
+        except:
+            amenities = ''
+        
+        try:
+            name = response.xpath('//h1[@id="HEADING"]/text()').extract()
+        except:
+            name = ''
+           
+        try:
+            location = response.xpath('//span[@class="street-address"]/text()').extract()
+        except:
+            location = ''
+    
+        try:
+            stars = response.xpath('//div[@class="additional_info stars"]/text()').extract()
+        except:
+            stars = ''
+    
+        try:
+            rating = response.xpath('//b[@class="rank"]').extract()
+        except:
+            rating = ''
+            
+        try:
+            reviews = response.xpath('//span[@class="tabs_pers_counts"]').extract()
+        except:
+            reviews = ''
+ 
+        data_dict = {'url':response._url, 'location':location, 'rating':rating, 'stars':stars, 'name':name, 'amenities':amenities, 'rooms':rooms, 'aka':aka, 'reviews':reviews}
+        for dd in [data_dict]:
+            yield TripAdvisorInfo(**dd)
+           
+        for url in selector.xpath('//a/@href').extract():
+            if "/Hotel_Review-g30196" not in url:
+                continue
+            if "#REVIEWS" in url:
+                continue
+            if url in self.url_set:
+                continue
+            try:
+                full_url = "http://www.tripadvisor.com%s" % url
+                self.url_set.add(url)
+                yield Request(full_url, callback=self.parse)
+            except:
+                print "Exception triggered by: %s" % full_url
+                continue
+            
+            
+
+"""
+sf:         "http://www.tripadvisor.com/Hotels-g60713-San_Francisco_California-Hotels.html"
+atlanta:    "http://www.tripadvisor.com/Hotels-g60898-Atlanta_Georgia-Hotels.html"
+denver:     "http://www.tripadvisor.com/Hotels-g33388-Denver_Colorado-Hotels.html"
+nashville:  "http://www.tripadvisor.com/Hotels-g55229-Nashville_Tennessee-Hotels.html"
+dallas:     "http://www.tripadvisor.com/Hotels-g55711-Dallas_Texas-Hotels.html"
+phenix:     "http://www.tripadvisor.com/Hotels-g30772-Phenix_City_Alabama-Hotels.html"
+orlando:    "http://www.tripadvisor.com/Hotels-g34515-Orlando_Florida-Hotels.html"
+dc:         "http://www.tripadvisor.com/Hotels-g28970-Washington_DC_District_of_Columbia-Hotels.html"
+san diego:  "http://www.tripadvisor.com/Hotels-g60750-San_Diego_California-Hotels.html"
+detroit:    "http://www.tripadvisor.com/Hotels-g42139-Detroit_Michigan-Hotels.html"
+houston:    "http://www.tripadvisor.com/Hotels-g56003-Houston_Texas-Hotels.html"
+seattle:    "http://www.tripadvisor.com/Hotels-g60878-Seattle_Washington-Hotels.html"
+phili:      "http://www.tripadvisor.com/Hotels-g60795-Philadelphia_Pennsylvania-Hotels.html"
+portland:   "http://www.tripadvisor.com/Hotels-g52024-Portland_Oregon-Hotels.html"
+chicago:    "http://www.tripadvisor.com/Hotels-g35805-Chicago_Illinois-Hotels.html"
+ny:         "http://www.tripadvisor.com/Hotels-g60763-New_York_City_New_York-Hotels.html"
+boston:     "http://www.tripadvisor.com/Hotels-g60745-Boston_Massachusetts-Hotels.html"
+minneapolis:"http://www.tripadvisor.com/Hotels-g43323-Minneapolis_Minnesota-Hotels.html"
+la:         "http://www.tripadvisor.com/Hotels-g32655-Los_Angeles_California-Hotels.html"
+new orleans:"http://www.tripadvisor.com/Hotels-g60864-New_Orleans_Louisiana-Hotels.html"
+las vegas:  "http://www.tripadvisor.com/Hotels-g45963-Las_Vegas_Nevada-Hotels.html"
+austen:     "http://www.tripadvisor.com/Hotels-g30196-Austin_Texas-Hotels.html"
+"""
